@@ -4,7 +4,10 @@ import '../model/course_result.dart';
 
 class LmsSystem {
   final List<Student> students = [];
+  final List<Course> courses = [];
   final List<CourseResult> courseResults = [];
+
+  // --- Student Management ---
 
   void addStudent({required String studentId, required String studentName}) {
     // ! Student shall not exist already
@@ -21,26 +24,25 @@ class LmsSystem {
     if (student == null) {
       throw Exception('Student $studentId not found');
     }
-    // 1- Remove student from the students list
-    students.removeWhere((student) => student.id == studentId);
-  }
 
-  Student? _findStudentOrNull(String studentId) {
-    for (Student s in students) {
-      if (s.id == studentId) {
-        return s;
-      }
+    // 1- Remove student from student list
+    students.removeWhere((s) => s.id == studentId);
+
+    // 2- Remove student from every course
+    for (var course in courses) {
+      course.studentIds.remove(studentId);
     }
-    return null; // not found
+
+    // 3- Remove all results
+    courseResults.removeWhere((cr) => cr.studentId == studentId);
   }
 
-// Course management
-  final List<Course> courses = [];
+  // --- Course Management ---
 
   void addCourse({required String courseId, required String courseName}) {
     Course? course = _findCourseOrNull(courseId);
     if (course != null) {
-      throw Exception('Course $course already exists');
+      throw Exception('Course $courseId already exists');
     }
 
     courses.add(Course(id: courseId, name: courseName));
@@ -51,46 +53,33 @@ class LmsSystem {
     if (course == null) {
       throw Exception('Course $courseId not found');
     }
-    // 1- Remove course from the courses list
-    courses.removeWhere((course) => course.id == courseId);
+    courses.removeWhere((c) => c.id == courseId);
+    courseResults.removeWhere((cr) => cr.courseId == courseId);
   }
 
-  Course? _findCourseOrNull(String courseId) {
-    for (Course c in courses) {
-      if (c.id == courseId) {
-        return c;
-      }
-    }
-    return null;
-  }
-
-  //Enroll student
+  // --- Enrollment  ---
 
   void enrollStudent({required String studentId, required String courseId}) {
-  
     Student? student = _findStudentOrNull(studentId);
     if (student == null) {
       throw Exception('Student $studentId not found');
     }
 
- 
     Course? course = _findCourseOrNull(courseId);
     if (course == null) {
       throw Exception('Course $courseId not found');
     }
 
-  
     if (course.studentIds.contains(studentId)) {
       throw Exception(
           'Student $studentId is already enrolled in course $courseId');
     }
 
-   
     course.studentIds.add(studentId);
   }
 
-//Discard student from course
-  void discardStudentFromCourse({required String studentId, required String courseId}) {
+  void discardStudentFromCourse(
+      {required String studentId, required String courseId}) {
     Student? student = _findStudentOrNull(studentId);
     if (student == null) {
       throw Exception('Student $studentId not found');
@@ -111,35 +100,32 @@ class LmsSystem {
         (cr) => cr.studentId == studentId && cr.courseId == courseId);
   }
 
-//add Result to a course
-  void addResult(
-      {required String studentId,
-      required String courseId,
-      required int score}) {
-    
+  // --- Result ---
+
+  void addResult({
+    required String studentId,
+    required String courseId,
+    required int score,
+  }) {
     if (score > 100 || score < 0) {
       throw Exception(
           'Invalid result: $score. Score must be between 0 and 100.');
     }
 
-   
     Student? student = _findStudentOrNull(studentId);
     if (student == null) {
       throw Exception('Student $studentId not found');
     }
 
-   
     Course? course = _findCourseOrNull(courseId);
     if (course == null) {
       throw Exception('Course $courseId not found');
     }
 
-   
     if (!course.studentIds.contains(studentId)) {
       throw Exception('Student $studentId is not enrolled in course $courseId');
     }
 
-    
     bool isResultExist = false;
     for (CourseResult cr in courseResults) {
       if (cr.studentId == studentId && cr.courseId == courseId) {
@@ -152,35 +138,49 @@ class LmsSystem {
           'Result for student $studentId in course $courseId already exists');
     }
 
-    // 6. Create a CourseResult and add it to results list
     courseResults.add(CourseResult(
-        id: '${studentId}_${courseId}',
+        id: '${studentId}_$courseId',
         studentId: studentId,
         courseId: courseId,
         score: score));
   }
 
-  //Remove result
   void removeResult({required String studentId, required String courseId}) {
-
     CourseResult? courseResult = _findResultOrNull(studentId, courseId);
 
-    if(courseResult == null){
+    if (courseResult == null) {
       throw Exception('Result not found');
     }
-    
+
     courseResults.remove(courseResult);
   }
 
-  CourseResult? _findResultOrNull(String studentId, String courseId){
+  // --- Helper ---
 
-    for(CourseResult cr in courseResults){
-      if(cr.studentId == studentId && cr.courseId == courseId){
-        return cr;
+  Student? _findStudentOrNull(String studentId) {
+    for (Student s in students) {
+      if (s.id == studentId) {
+        return s;
       }
     }
     return null;
   }
 
+  Course? _findCourseOrNull(String courseId) {
+    for (Course c in courses) {
+      if (c.id == courseId) {
+        return c;
+      }
+    }
+    return null;
+  }
 
+  CourseResult? _findResultOrNull(String studentId, String courseId) {
+    for (CourseResult cr in courseResults) {
+      if (cr.studentId == studentId && cr.courseId == courseId) {
+        return cr;
+      }
+    }
+    return null;
+  }
 }
